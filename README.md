@@ -1,183 +1,195 @@
-# Expense-Tracker-Lite
-📱 Overview
-A Flutter-based expense tracking application with dashboard analytics and expense management features. The app helps users track their spending across categories with currency conversion capabilities.
+# Expense Tracker App 📊
 
-https://2.png https://1.png
+A Flutter application for tracking expenses with BLoC state management, currency conversion, and local data persistence.
 
-🔹 Architecture & State Management
-Architecture
-The app follows a clean architecture approach with:
+## Table of Contents
+- [Architecture](#architecture-)
+- [Features](#features-)
+  - [Dashboard Screen](#1-dashboard-screen-)
+  - [Add Expense Screen](#2-add-expense-screen-)
+  - [Currency Conversion](#3-currency-conversion-)
+  - [Pagination](#4-pagination-)
+  - [Local Storage](#5-local-storage-)
+  - [Expense Summary](#6-expense-summary-)
+- [Dependencies](#dependencies-)
+- [Getting Started](#getting-started-)
+- [Folder Structure](#folder-structure-)
+- [Testing](#testing-)
 
-Presentation Layer: UI components and BLoCs
+## Architecture 🏗️
 
-Domain Layer: Business logic and use cases
-
-Data Layer: Repositories and data sources
-
-State Management
-BLoC pattern (flutter_bloc) for all state management
-
-Each feature has its own BLoC:
-
-DashboardBloc - Manages dashboard data and filtering
-
-ExpenseBloc - Handles expense creation and management
-
-CurrencyBloc - Manages currency conversion
-
-UI reacts to state changes using BlocBuilder and BlocListener
-
-🛠 Core Features Implementation
-1. Dashboard Screen
-dart
-BlocProvider(
-  create: (context) => DashboardBloc(
-    expenseRepository: context.read<ExpenseRepository>(),
-  )..add(LoadDashboardData()),
-  child: DashboardView(),
-)
-2. Add Expense Screen
-dart
-BlocProvider(
-  create: (context) => ExpenseBloc(
-    saveExpense: context.read<SaveExpenseUseCase>(),
-    currencyBloc: context.read<CurrencyBloc>(),
-  ),
-  child: AddExpenseView(),
-)
-3. Currency Conversion (API Integration)
-dart
-class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
-  final CurrencyRepository repository;
-  
-  Future<void> _convertCurrency(ConvertCurrency event, Emitter emit) async {
-    final rate = await repository.getExchangeRate(
-      from: event.fromCurrency,
-      to: event.toCurrency
-    );
-    emit(CurrencyConverted(rate));
-  }
-}
-4. Pagination
-dart
-class ExpenseRepository {
-  Future<PaginationResult<Expense>> getExpenses({
-    required int page,
-    required int limit,
-    ExpenseFilter? filter,
-  }) async {
-    // Implementation
-  }
-}
-5. Local Storage
-dart
-@HiveType(typeId: 0)
-class ExpenseModel {
-  @HiveField(0)
-  final double amount;
-  // Other fields
-}
-
-// Initialize
-await Hive.initFlutter();
-Hive.registerAdapter(ExpenseModelAdapter());
-6. Expense Summary
-dart
-class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
-  Future<void> _loadSummary(LoadDashboardData event, Emitter emit) async {
-    final summary = await repository.getSummary(filter: event.filter);
-    emit(DashboardLoaded(summary));
-  }
-}
-🏗 Project Structure
-text
-lib/
-├── core/
-│   ├── di/                # Dependency injection
-│   ├── theme/             # App styling
-│   └── utils/             # Utilities
-├── data/
-│   ├── datasources/       # Local and remote data sources
-│   ├── models/            # Data models
-│   └── repositories/      # Repository implementations
-├── domain/
-│   ├── entities/          # Business entities
-│   ├── repositories/      # Repository interfaces
-│   └── usecases/          # Business logic
-└── features/
-    ├── dashboard/         # Dashboard feature
-    ├── expense/           # Expense management
-    └── currency/          # Currency conversion
-🚀 How to Run
-Clone the repository
-
-Install dependencies:
-
-bash
-flutter pub get
-Generate files (if using injectable):
-
-bash
-flutter pub run build_runner build
-Run the app:
-
-bash
-flutter run
-⚖️ Trade-offs & Assumptions
-Using Hive for local storage for simplicity (could use SQLite for more complex queries)
-
-Mock API for currency conversion in development
-
-Assumes single-user device storage (no cloud sync)
-
-Pagination implemented client-side for demo purposes
-
-🐛 Known Issues
-Receipt image upload compression not optimized
-
-Currency conversion rates not cached
-
-No offline-first support for API calls
-
-Limited error handling for edge cases
-
-🔮 Future Improvements
-Implement biometric authentication
-
-Add expense categorization AI
-
-Multi-currency wallet support
-
-Export/import functionality
-
-Recurring expenses feature
-
-📊 MVVM Structure
-While using BLoC pattern, we maintain MVVM separation:
-
-Model: Data layer (entities, repositories)
-
-View: UI components
-
-ViewModel: BLoCs that prepare data for views
-
-dart
-// Example ViewModel (BLoC)
-class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
-  final GetDashboardSummaryUseCase getSummary;
-  
-  Stream<DashboardState> mapEventToState(DashboardEvent event) async* {
-    if (event is LoadDashboardData) {
-      yield* _mapLoadDashboardToState(event);
-    }
+### BLoC Pattern Implementation
+```dart
+// Example feature bloc structure
+class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
+  ExpenseBloc(this.expenseRepository) : super(ExpenseInitial()) {
+    on<LoadExpenses>((event, emit) async {
+      emit(ExpenseLoading());
+      try {
+        final expenses = await expenseRepository.getExpenses();
+        emit(ExpenseLoaded(expenses));
+      } catch (e) {
+        emit(ExpenseError(e.toString()));
+      }
+    });
   }
   
-  Stream<DashboardState> _mapLoadDashboardToState(LoadDashboardData event) async* {
-    try {
-      final summary = await getSummary(event.filter);
-      yield DashboardLoaded(summary);
-    } catch (e) {
-      yield DashboardError(e.toString());
-    }
+  final ExpenseRepository expenseRepository;
+}
+```
+
+## Key Features ✨
+
+### 🏠 Dashboard Screen
+- Personalized user greeting with profile picture
+- Financial overview cards:
+  - 💰 Total balance
+  - 📈 Total income
+  - 📉 Total expenses
+- Time period filters (This Month, Last 7 Days, Custom Range)
+- 📜 Paginated recent transactions list
+- ➕ Floating action button for quick expense addition
+
+### ➕ Add Expense Screen
+- 🗂️ Category selection with visual icons
+- 💵 Amount input with currency validation
+- 📅 Date picker with smart defaults
+- 📸 Receipt image capture/upload
+- 💱 Multi-currency support
+- ✔️ Form validation and error handling
+
+### 🔄 Paginated Lists
+- 📋 10 items per page loading
+- ⏳ Infinite scroll with loading indicators
+- 🔍 Maintains filters during pagination
+- 🖱️ "Load More" button alternative
+- 📱 Responsive design for all screen sizes
+
+### 💱 Currency Conversion
+- 🌍 Real-time exchange rates via API
+- 💵 Automatic conversion to base currency (USD)
+- 📊 Stores both original and converted amounts
+- ⚠️ Graceful error handling for offline mode
+- 🔄 Background sync for updated rates
+
+### 💾 Local Storage
+- 🗄️ Hive NoSQL database implementation
+- ⚡ Fast read/write operations
+- 🔄 Data synchronization logic
+- 📱 Platform-specific optimizations
+- 🔒 Secure storage for sensitive data
+
+### 📊 Expense Analytics
+- 🥧 Interactive pie charts by category
+- 📈 Time-based trend analysis
+- 🔢 Custom reporting periods
+- 🎨 Themed visualization widgets
+- 📤 Export capability (CSV/PDF)
+
+## Technical Architecture 🏗️
+
+### BLoC State Management
+```dart
+// Typical BLoC implementation
+class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
+  final ExpenseRepository repository;
+  
+  ExpenseBloc(this.repository) : super(ExpenseInitial()) {
+    on<LoadExpenses>((event, emit) async {
+      emit(ExpenseLoading());
+      try {
+        final expenses = await repository.getExpenses();
+        emit(ExpenseLoaded(expenses));
+      } catch (e) {
+        emit(ExpenseError(e.toString()));
+      }
+    });
   }
 }
+```
+
+## Project Structure 📂
+
+### Key Directories Explained:
+
+**`lib/core/`** - Reusable infrastructure:
+- `constants/`: App-wide strings, routes, etc.
+- `widgets/`: Shared UI components
+- `themes/`: Colors, text styles, themes
+
+**`lib/features/`** - Feature modules (each contains):
+- `bloc/`: State management files
+- `views/`: Full screens
+- `widgets/`: Feature-specific components
+
+**`lib/data/`** - Data layer:
+- `datasources/`: Local (Hive) and remote (API)
+- `models/`: Entity classes
+- `repositories/`: Data access implementations
+
+## Architecture 🏗️
+
+### BLoC Implementation Example
+```dart
+class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
+  final ExpenseRepository repository;
+  
+  ExpenseBloc(this.repository) : super(ExpenseInitial()) {
+    on<LoadExpenses>((event, emit) async {
+      emit(ExpenseLoading());
+      try {
+        final expenses = await repository.getExpenses();
+        emit(ExpenseLoaded(expenses));
+      } catch (e) {
+        emit(ExpenseError(e.toString()));
+      }
+    });
+  }
+}
+```
+
+## API Integration 🌐
+
+### Currency Exchange API Requirement
+The app integrates with a REST API for real-time currency conversion:
+
+```dart
+// Example API Service Implementation
+class CurrencyRemoteDataSourceImp implements CurrencyRemoteDataSource{
+  final NetworkManager networkManager;
+
+  CurrencyRemoteDataSourceImp(this.networkManager);
+  
+  @override
+  Future<CurrencyModel> convertCurrency(String from , String amount) async{
+    final response = await networkManager.get("${ApiEndpoints.currencyExchange}from=$from&to=USD&amount=$amount&api_key=$accessKey");
+    debugPrint("response: $response");
+    return  CurrencyModel.fromJson(response);
+  }
+  
+}
+```
+## Getting Started 🚀
+
+### Prerequisites
+- Flutter SDK (>= 3.0.0)
+- Dart (>= 2.17.0)
+- Android Studio/VSCode with Flutter plugin
+- For Hive: Java JDK (for Android) or Xcode (for iOS)
+- using command flutter ``` pub run build_runner build ```  to generate files
+
+### Installation Steps
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/ShaimaaIbrahim/Expense-Tracker-Lite
+   ```
+
+## App Screenshots 📸
+
+### Dashboard
+![Dashboard Screen](./screenshots/333.png)
+
+### Add Expense
+![Add Expense Screen](./screenshots/111.png)
+
